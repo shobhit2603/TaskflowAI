@@ -1,79 +1,37 @@
-import { z } from 'zod';
 import * as AuthService from '../services/auth.service.js';
 import { asyncHandler } from '../utils/asyncHandler.js';
 import { ApiError } from '../utils/apiError.js';
+import { signupSchema, loginSchema } from '../validators/auth.validator.js';
 
-// ─── Zod validation schemas ───────────────────────────────────────────────────
-// Defined at module scope (not inside handler functions) so they're compiled
-// once and reused across requests — a small but real performance win.
+// ─── Shared validation helper ─────────────────────────────────────────────────
+// This tiny function is used in every controller: run the Zod schema,
+// and if it fails, throw an ApiError(400) with all the field-level errors.
+//
+// Why not use a middleware? A middleware runs before the controller and
+// needs to know which schema to use — that coupling is messier than just
+// calling this one line inside the controller where context is clear.
+const validate = (schema, data) => {
+  const result = schema.safeParse(data);
+  if (!result.success) {
+    const errors = result.error.issues.map((issue) => ({
+      field: issue.path.join('.'),
+      message: issue.message,
+    }));
+    throw ApiError.badRequest('Validation failed', errors);
+  }
+  return result.data; // returns the parsed & coerced data (e.g. email lowercased)
+};
 
-const signupSchema = z.object({
-  name: z
-    .string({ required_error: 'Name is required' })
-    .trim()
-    .min(2, 'Name must be at least 2 characters')
-    .max(50, 'Name cannot exceed 50 characters'),
-
-  email: z
-    .string({ required_error: 'Email is required' })
-    .trim()
-    .email('Please provide a valid email address')
-    .toLowerCase(),
-
-  password: z
-    .string({ required_error: 'Password is required' })
-    .min(8, 'Password must be at least 8 characters')
-    .max(72, 'Password cannot exceed 72 characters') // bcrypt 72-byte limit
-    .regex(
-      /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)/,
-      'Password must contain at least one uppercase letter, one lowercase letter, and one number'
-    ),
-});
-
-const loginSchema = z.object({
-  email: z
-    .string({ required_error: 'Email is required' })
-    .trim()
-    .email('Please provide a valid email address')
-    .toLowerCase(),
-
-  password: z
-    .string({ required_error: 'Password is required' })
-    .min(1, 'Password is required'),
-});
-
-// ─── Helper: parse Zod errors into a flat array ───────────────────────────────
-/**
- * Converts Zod's ZodError.issues into the app's standard errors[] array format:
- * [{ field: 'email', message: 'Invalid email address' }, ...]
- *
- * @param {import('zod').ZodError} zodError
- * @returns {Array<{ field: string, message: string }>}
- */
-const formatZodErrors = (zodError) =>
-  zodError.issues.map((issue) => ({
-    field: issue.path.join('.'),
-    message: issue.message,
-  }));
-
-// ─── Controllers ──────────────────────────────────────────────────────────────
+// ─── Handlers ─────────────────────────────────────────────────────────────────
 
 /**
- * signup — POST /api/v1/auth/signup
- *
- * Validates input → delegates to AuthService.signup → responds 201 with
- * { success, message, data: { user, token } }
- *
- * @type {import('express').RequestHandler}
+ * POST /api/v1/auth/signup
+ * Public — creates a new user account and returns a JWT.
  */
 export const signup = asyncHandler(async (req, res) => {
-  // Validate request body
-  const result = signupSchema.safeParse(req.body);
-  if (!result.success) {
-    throw ApiError.badRequest('Validation failed', formatZodErrors(result.error));
-  }
+  const data = validate(signupSchema, req.body);
 
-  const { user, token } = await AuthService.signup(result.data);
+  const { user, token } = await AuthService.signup(data);
 
   return res.status(201).json({
     success: true,
@@ -83,20 +41,13 @@ export const signup = asyncHandler(async (req, res) => {
 });
 
 /**
- * login — POST /api/v1/auth/login
- *
- * Validates input → delegates to AuthService.login → responds 200 with
- * { success, message, data: { user, token } }
- *
- * @type {import('express').RequestHandler}
+ * POST /api/v1/auth/login
+ * Public — authenticates a user and returns a JWT.
  */
 export const login = asyncHandler(async (req, res) => {
-  const result = loginSchema.safeParse(req.body);
-  if (!result.success) {
-    throw ApiError.badRequest('Validation failed', formatZodErrors(result.error));
-  }
+  const data = validate(loginSchema, req.body);
 
-  const { user, token } = await AuthService.login(result.data);
+  const { user, token } = await AuthService.login(data);
 
   return res.status(200).json({
     success: true,
@@ -106,16 +57,11 @@ export const login = asyncHandler(async (req, res) => {
 });
 
 /**
- * getMe — GET /api/v1/auth/me
- *
- * Protected route — req.user is guaranteed to be set by the protect middleware.
- * Returns the current authenticated user's profile.
- *
- * @type {import('express').RequestHandler}
+ * GET /api/v1/auth/me
+ * Protected — returns the currently authenticated user's profile.
+ * req.user is guaranteed to be set by the protect middleware before this runs.
  */
 export const getMe = asyncHandler(async (req, res) => {
-  // req.user is already the full user document attached by protect middleware.
-  // We call the service to get a fresh DB copy (in case of concurrent updates).
   const user = await AuthService.getMe(req.user._id);
 
   return res.status(200).json({
