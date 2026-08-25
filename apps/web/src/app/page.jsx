@@ -1,7 +1,10 @@
-export default function Home() {
-  return (
-    <div className="flex items-center justify-center h-screen">
-      <h1 className="text-6xl">TaskflowAI</h1>
-    </div>
-  )
+import { redirect } from "next/navigation";
+
+/**
+ * Root page — immediately redirects based on intent.
+ * The actual auth check (token valid?) happens in the dashboard layout.
+ * This just provides a sensible default URL behaviour.
+ */
+export default function RootPage() {
+  redirect("/dashboard");
 }
