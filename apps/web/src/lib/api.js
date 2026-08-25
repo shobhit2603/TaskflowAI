@@ -14,7 +14,7 @@ import { useAuthStore } from "@/store/authStore";
  *  - 30s timeout to handle slow AI endpoints gracefully
  */
 const api = axios.create({
-  baseURL: process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000/api/v1",
+  baseURL: process.env.NEXT_PUBLIC_API_URL || "/api/v1",
   timeout: 30000,
   headers: { "Content-Type": "application/json" },
 });
