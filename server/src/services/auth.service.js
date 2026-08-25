@@ -80,21 +80,4 @@ export const login = async ({ email, password }) => {
   return { user, token };
 };
 
-/**
- * getMe — fetches the authenticated user's profile.
- *
- * Called by the GET /me route after the auth middleware has already
- * validated the token and attached req.user. We do a fresh DB fetch
- * here rather than returning req.user directly to ensure we always
- * return current data (e.g. if a user's name was updated elsewhere).
- *
- * @param {string} userId - MongoDB ObjectId from the verified JWT payload
- * @returns {Promise<object>} User document (passwordHash stripped by toJSON)
- */
-export const getMe = async (userId) => {
-  const user = await UserRepository.findById(userId);
-  if (!user) {
-    throw ApiError.notFound('User not found.');
-  }
-  return user;
-};
+

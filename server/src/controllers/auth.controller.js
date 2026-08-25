@@ -1,26 +1,7 @@
 import * as AuthService from '../services/auth.service.js';
 import { asyncHandler } from '../utils/asyncHandler.js';
-import { ApiError } from '../utils/apiError.js';
+import { validate } from '../utils/validate.js';
 import { signupSchema, loginSchema } from '../validators/auth.validator.js';
-
-// ─── Shared validation helper ─────────────────────────────────────────────────
-// This tiny function is used in every controller: run the Zod schema,
-// and if it fails, throw an ApiError(400) with all the field-level errors.
-//
-// Why not use a middleware? A middleware runs before the controller and
-// needs to know which schema to use — that coupling is messier than just
-// calling this one line inside the controller where context is clear.
-const validate = (schema, data) => {
-  const result = schema.safeParse(data);
-  if (!result.success) {
-    const errors = result.error.issues.map((issue) => ({
-      field: issue.path.join('.'),
-      message: issue.message,
-    }));
-    throw ApiError.badRequest('Validation failed', errors);
-  }
-  return result.data; // returns the parsed & coerced data (e.g. email lowercased)
-};
 
 // ─── Handlers ─────────────────────────────────────────────────────────────────
 
@@ -59,14 +40,15 @@ export const login = asyncHandler(async (req, res) => {
 /**
  * GET /api/v1/auth/me
  * Protected — returns the currently authenticated user's profile.
- * req.user is guaranteed to be set by the protect middleware before this runs.
+ *
+ * The protect middleware already fetched the user from DB and attached it to
+ * req.user. We return it directly here instead of doing a second DB call —
+ * the data is fresh from this same request's middleware chain.
  */
 export const getMe = asyncHandler(async (req, res) => {
-  const user = await AuthService.getMe(req.user._id);
-
   return res.status(200).json({
     success: true,
     message: 'User profile fetched successfully.',
-    data: { user },
+    data: { user: req.user },
   });
 });

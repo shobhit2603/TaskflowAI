@@ -24,21 +24,25 @@ export const getTasks = async (userId, queryOptions) => {
     queryOptions
   );
 
-  // Build pagination metadata — useful for the frontend to know if there are more pages
-  const totalPages = Math.ceil(total / limit);
+  // Coerce to Number — Zod string defaults ('1', '20') can survive as strings
+  // through the pipeline if no query params were provided.
+  const pageNum = Number(page);
+  const limitNum = Number(limit);
+  const totalPages = Math.ceil(total / limitNum);
 
   return {
     tasks,
     pagination: {
       total,
-      page,
-      limit,
+      page: pageNum,
+      limit: limitNum,
       totalPages,
-      hasNextPage: page < totalPages,
-      hasPrevPage: page > 1,
+      hasNextPage: pageNum < totalPages,
+      hasPrevPage: pageNum > 1,
     },
   };
 };
+
 
 /**
  * Get a single task by ID — verifies the task belongs to the requesting user.

@@ -11,6 +11,7 @@ const envConfig = Object.freeze({
     ? process.env.ALLOWED_ORIGINS.split(",")
     : [process.env.CLIENT_URL || "http://localhost:3000"],
   JWT_SECRET: process.env.JWT_SECRET,
+  MISTRAL_API_KEY: process.env.MISTRAL_API_KEY,
 });
 
 export default envConfig;

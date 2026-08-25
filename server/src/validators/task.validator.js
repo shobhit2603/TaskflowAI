@@ -71,14 +71,18 @@ export const taskQuerySchema = z.object({
   priority: z.enum(['low', 'medium', 'high']).optional(),
   category: z.string().trim().optional(),
   completed: z
-    .string()
-    .transform((val) => val === 'true') // query params arrive as strings
+    .enum(['true', 'false'], {
+      errorMap: () => ({ message: 'completed must be "true" or "false"' }),
+    })
+    .transform((val) => val === 'true') // convert string to boolean after validation
     .optional(),
   sortBy: z
     .enum(['dueDate', 'priority', 'createdAt', 'title'])
     .optional()
     .default('createdAt'),
   order: z.enum(['asc', 'desc']).optional().default('desc'),
+  // Note: defaults are strings here because query params always arrive as strings.
+  // Zod applies .default() BEFORE .transform(), so '1' → transform(Number) → 1 works correctly.
   page: z
     .string()
     .transform(Number)

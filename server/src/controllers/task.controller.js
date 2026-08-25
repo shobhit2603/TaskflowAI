@@ -1,23 +1,21 @@
 import * as TaskService from '../services/task.service.js';
 import { asyncHandler } from '../utils/asyncHandler.js';
 import { ApiError } from '../utils/apiError.js';
+import { validate, isValidObjectId } from '../utils/validate.js';
 import {
   createTaskSchema,
   updateTaskSchema,
   taskQuerySchema,
 } from '../validators/task.validator.js';
 
-// ─── Shared validation helper (same pattern as auth.controller.js) ────────────
-const validate = (schema, data) => {
-  const result = schema.safeParse(data);
-  if (!result.success) {
-    const errors = result.error.issues.map((issue) => ({
-      field: issue.path.join('.'),
-      message: issue.message,
-    }));
-    throw ApiError.badRequest('Validation failed', errors);
+// ─── ObjectId guard ───────────────────────────────────────────────────────────
+// Reusable check: if the :id param isn't a valid MongoDB ObjectId, we reject
+// immediately before hitting the database. This prevents Mongoose CastErrors
+// from leaking through the error handler with a confusing message.
+const checkObjectId = (id) => {
+  if (!isValidObjectId(id)) {
+    throw ApiError.badRequest('Invalid ID format. Task IDs must be 24-character hex strings.');
   }
-  return result.data;
 };
 
 // ─── Handlers ─────────────────────────────────────────────────────────────────
@@ -45,6 +43,8 @@ export const getTasks = asyncHandler(async (req, res) => {
  * Returns a single task. The service will 404 if not found, 403 if not the owner.
  */
 export const getTask = asyncHandler(async (req, res) => {
+  checkObjectId(req.params.id);
+
   const task = await TaskService.getTaskById(req.params.id, req.user._id);
 
   return res.status(200).json({
@@ -76,6 +76,8 @@ export const createTask = asyncHandler(async (req, res) => {
  * The service verifies ownership before updating.
  */
 export const updateTask = asyncHandler(async (req, res) => {
+  checkObjectId(req.params.id);
+
   const updates = validate(updateTaskSchema, req.body);
 
   const task = await TaskService.updateTask(req.params.id, req.user._id, updates);
@@ -92,6 +94,8 @@ export const updateTask = asyncHandler(async (req, res) => {
  * Deletes a task. The service verifies ownership before deleting.
  */
 export const deleteTask = asyncHandler(async (req, res) => {
+  checkObjectId(req.params.id);
+
   await TaskService.deleteTask(req.params.id, req.user._id);
 
   return res.status(200).json({
@@ -108,6 +112,8 @@ export const deleteTask = asyncHandler(async (req, res) => {
  * it just sends PATCH /toggle instead of a full PUT with all fields.
  */
 export const toggleTask = asyncHandler(async (req, res) => {
+  checkObjectId(req.params.id);
+
   const task = await TaskService.toggleTaskComplete(req.params.id, req.user._id);
 
   return res.status(200).json({
