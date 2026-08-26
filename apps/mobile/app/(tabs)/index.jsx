@@ -43,11 +43,12 @@ function TaskCard({ task }) {
   const { mutate: deleteTask } = useDeleteTask();
   const { openForm } = useTaskStore();
   const p = PRIORITY_COLORS[task.priority] || PRIORITY_COLORS.medium;
+  const taskId = task.id || task._id;
 
   const handleDelete = () => {
     Alert.alert("Delete Task", `Delete "${task.title}"?`, [
       { text: "Cancel", style: "cancel" },
-      { text: "Delete", style: "destructive", onPress: () => deleteTask(task.id) },
+      { text: "Delete", style: "destructive", onPress: () => deleteTask(taskId) },
     ]);
   };
 
@@ -64,7 +65,7 @@ function TaskCard({ task }) {
     }}>
       {/* Toggle circle */}
       <TouchableOpacity
-        onPress={() => toggle(task.id)}
+        onPress={() => toggle(taskId)}
         style={{
           width: 22, height: 22, borderRadius: 11,
           borderWidth: 2,

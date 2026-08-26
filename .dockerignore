@@ -1,0 +1,15 @@
+node_modules
+.next
+.expo
+.env
+.env.*
+!.env.example
+.git
+*.md
+.vscode
+.idea
+coverage
+apps/mobile/node_modules
+apps/web/.next
+apps/web/node_modules
+server/node_modules

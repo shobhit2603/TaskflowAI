@@ -19,13 +19,14 @@ export default function TaskCard({ task, index = 0 }) {
   const { mutate: deleteTask, isPending: isDeleting } = useDeleteTask();
   const { openTaskForm } = useTaskStore();
 
+  const taskId = task.id || task._id;
   const priorityConfig = getPriorityConfig(task.priority);
   const pastDue = isPastDue(task.dueDate) && !task.completed;
   const relativeDate = formatRelativeDate(task.dueDate);
 
   const handleDelete = () => {
     if (confirmDelete) {
-      deleteTask(task.id);
+      deleteTask(taskId);
     } else {
       setConfirmDelete(true);
       setTimeout(() => setConfirmDelete(false), 3000);
@@ -44,7 +45,7 @@ export default function TaskCard({ task, index = 0 }) {
     >
       {/* ── Toggle circle ────────────────────────────────────────────── */}
       <button
-        onClick={() => !isToggling && toggleTask(task.id)}
+        onClick={() => !isToggling && toggleTask(taskId)}
         className={cn(
           "mt-0.5 h-5 w-5 shrink-0 rounded-full border-2 flex items-center justify-center",
           "transition-all duration-150 active:scale-90",

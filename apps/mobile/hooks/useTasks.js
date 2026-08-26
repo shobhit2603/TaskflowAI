@@ -59,14 +59,34 @@ export function useUpdateTask() {
 
 export function useDeleteTask() {
   const qc = useQueryClient();
+  const { filters } = useTaskStore();
+  const params = Object.fromEntries(
+    Object.entries(filters).filter(([, v]) => v !== "" && v !== undefined)
+  );
 
   return useMutation({
     mutationFn: (id) => api.delete(`/tasks/${id}`),
+    // Optimistic update — remove the task from the list immediately
+    onMutate: async (taskId) => {
+      await qc.cancelQueries({ queryKey: taskKeys.list(params) });
+      const previousData = qc.getQueryData(taskKeys.list(params));
+      qc.setQueryData(taskKeys.list(params), (old) => {
+        if (!old?.tasks) return old;
+        return {
+          ...old,
+          tasks: old.tasks.filter((t) => (t.id || t._id) !== taskId),
+        };
+      });
+      return { previousData };
+    },
     onSuccess: () => {
-      qc.invalidateQueries({ queryKey: taskKeys.lists() });
       toast.success("Task deleted.");
     },
-    onError: (error) => toast.error(error.message || "Failed to delete task."),
+    onError: (_err, _id, ctx) => {
+      qc.setQueryData(taskKeys.list(params), ctx?.previousData);
+      toast.error(_err.message || "Failed to delete task.");
+    },
+    onSettled: () => qc.invalidateQueries({ queryKey: taskKeys.lists() }),
   });
 }
 

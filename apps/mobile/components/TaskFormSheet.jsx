@@ -30,7 +30,8 @@ export default function TaskFormSheet() {
   const { mutate: update, isPending: isUpdating } = useUpdateTask();
   const { mutate: suggest, data: suggestion } = useSuggestCategory();
 
-  const isEditing = !!(editingTask?.id);
+  const editingId = editingTask?.id || editingTask?._id;
+  const isEditing = !!editingId;
   const isPending = isCreating || isUpdating;
 
   const [title, setTitle] = useState("");
@@ -64,7 +65,7 @@ export default function TaskFormSheet() {
     if (!title.trim()) return;
     const payload = { title: title.trim(), description, priority, category };
     if (isEditing) {
-      update({ id: editingTask.id, ...payload });
+      update({ id: editingId, ...payload });
     } else {
       create(payload);
     }

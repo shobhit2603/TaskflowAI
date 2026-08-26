@@ -1,0 +1,47 @@
+# ── TaskflowAI Server — Production Dockerfile ─────────────────────────────────
+# Multi-stage build for minimal image size (~180MB vs ~1GB)
+#
+# Stage 1: Install dependencies (cached layer)
+# Stage 2: Copy source and run
+# ──────────────────────────────────────────────────────────────────────────────
+
+# ── Stage 1: Dependencies ─────────────────────────────────────────────────────
+FROM node:20-alpine AS deps
+
+WORKDIR /app
+
+# Copy only package files first — Docker caches this layer so `npm install`
+# doesn't re-run unless dependencies actually change.
+COPY package.json package-lock.json ./
+
+# Production-only install: skip devDependencies (nodemon etc.)
+RUN npm ci --omit=dev
+
+# ── Stage 2: Runtime ──────────────────────────────────────────────────────────
+FROM node:20-alpine AS runtime
+
+WORKDIR /app
+
+# Security: run as non-root user
+RUN addgroup -S taskflow && adduser -S taskflow -G taskflow
+
+# Copy installed node_modules from deps stage
+COPY --from=deps /app/node_modules ./node_modules
+
+# Copy application source
+COPY package.json ./
+COPY server.js ./
+COPY src/ ./src/
+
+# Switch to non-root user
+USER taskflow
+
+# Expose the API port (default 5000, configurable via PORT env var)
+EXPOSE 5000
+
+# Health check — ensures the container is marked unhealthy if the API is down
+HEALTHCHECK --interval=30s --timeout=5s --start-period=10s --retries=3 \
+  CMD wget --no-verbose --tries=1 --spider http://localhost:${PORT:-5000}/api/v1/health || exit 1
+
+# Start the server
+CMD ["node", "server.js"]
