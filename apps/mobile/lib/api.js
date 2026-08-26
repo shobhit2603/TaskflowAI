@@ -7,7 +7,7 @@ import { Platform } from "react-native";
  * API base URL
  */
 const BASE_URL = Platform.OS === "android" 
-  ? "http://10.0.2.2:5000/api/v1" 
+  ? "https://taskflowai-server.onrender.com/api/v1" 
   : "http://localhost:5000/api/v1";
 
 const api = axios.create({
